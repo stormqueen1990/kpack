@@ -1,4 +1,4 @@
-package image
+  package image
 
 import (
 	"testing"
@@ -57,8 +57,16 @@ func testImageBuilds(t *testing.T, when spec.G, it spec.S) {
 		Name:         "builder-Name",
 		LatestImage:  "some/builder@sha256:builder-digest",
 		BuilderReady: true,
-		BuilderMetadata: []v1alpha1.BuildpackMetadata{
-			{Id: "buildpack.matches", Version: "1"},
+		BuilderMetadata: v1alpha1.MetadataOrder{
+			{
+				Group: v1alpha1.BuildpackMetadataList{
+					v1alpha1.BuildpackMetadata{
+						Id:       "buildpack.matches",
+						Version:  "1",
+					},
+				},
+
+			},
 		},
 		LatestRunImage: "some.registry.io/run-image@sha256:67e3de2af270bf09c02e9a644aeb7e87e6b3c049abe6766bf6b6c3728a83e7fb",
 	}
@@ -189,9 +197,21 @@ func testImageBuilds(t *testing.T, when spec.G, it spec.S) {
 
 		when("Builder Metadata changes", func() {
 			it("false if builder has additional unused buildpacks", func() {
-				builder.BuilderMetadata = []v1alpha1.BuildpackMetadata{
-					{Id: "buildpack.matches", Version: "1"},
-					{Id: "buildpack.unused", Version: "unused"},
+
+				builder.BuilderMetadata = v1alpha1.MetadataOrder{
+						{
+							Group: v1alpha1.BuildpackMetadataList{
+								v1alpha1.BuildpackMetadata{
+									Id:       "buildpack.matches",
+									Version:  "1",
+								},
+								v1alpha1.BuildpackMetadata{
+									Id:       "buildpack.unused",
+									Version:  "unused",
+								},
+							},
+
+						},
 				}
 
 				reasons, needed := buildNeeded(image, latestBuild, sourceResolver, builder)
@@ -200,11 +220,21 @@ func testImageBuilds(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("true if builder metadata has different buildpack version from used buildpack version", func() {
-				builder.BuilderMetadata = []v1alpha1.BuildpackMetadata{
-					{Id: "buildpack.matches", Version: "NEW_VERSION"},
-					{Id: "buildpack.different", Version: "different"},
-				}
+				builder.BuilderMetadata = v1alpha1.MetadataOrder{
+					{
+						Group: v1alpha1.BuildpackMetadataList{
+							v1alpha1.BuildpackMetadata{
+								Id:       "buildpack.matches",
+								Version:  "NEW_VERSION",
+							},
+							v1alpha1.BuildpackMetadata{
+								Id:       "buildpack.different",
+								Version:  "different",
+							},
+						},
 
+					},
+				}
 				reasons, needed := buildNeeded(image, latestBuild, sourceResolver, builder)
 				assert.Equal(t, corev1.ConditionTrue, needed)
 				require.Len(t, reasons, 1)
@@ -212,9 +242,20 @@ func testImageBuilds(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("true if builder does not have all most recent used buildpacks", func() {
-				builder.BuilderMetadata = []v1alpha1.BuildpackMetadata{
-					{Id: "buildpack.only.new.buildpacks", Version: "1"},
-					{Id: "buildpack.only.new.or.unused.buildpacks", Version: "1"},
+				builder.BuilderMetadata = v1alpha1.MetadataOrder{
+					{
+						Group: v1alpha1.BuildpackMetadataList{
+							v1alpha1.BuildpackMetadata{
+								Id:       "buildpack.only.new.buildpacks",
+								Version:  "1",
+							},
+							v1alpha1.BuildpackMetadata{
+								Id:       "buildpack.only.new.or.unused.buildpacks",
+								Version:  "1",
+							},
+						},
+
+					},
 				}
 
 				reasons, needed := buildNeeded(image, latestBuild, sourceResolver, builder)
@@ -403,7 +444,7 @@ func testImageBuilds(t *testing.T, when spec.G, it spec.S) {
 
 type TestBuilderResource struct {
 	BuilderReady     bool
-	BuilderMetadata  []v1alpha1.BuildpackMetadata
+	BuilderMetadata  v1alpha1.MetadataOrder
 	ImagePullSecrets []corev1.LocalObjectReference
 	LatestImage      string
 	LatestRunImage   string
@@ -421,7 +462,7 @@ func (t TestBuilderResource) Ready() bool {
 	return t.BuilderReady
 }
 
-func (t TestBuilderResource) BuildpackMetadata() v1alpha1.BuildpackMetadataList {
+func (t TestBuilderResource) BuildpackMetadata() v1alpha1.MetadataOrder {
 	return t.BuilderMetadata
 }
 

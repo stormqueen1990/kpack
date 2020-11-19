@@ -40,9 +40,9 @@ type NamespacedBuilderSpec struct {
 // +k8s:openapi-gen=true
 type BuilderStatus struct {
 	corev1alpha1.Status `json:",inline"`
-	BuilderMetadata     BuildpackMetadataList `json:"builderMetadata,omitempty"`
-	Stack               BuildStack            `json:"stack,omitempty"`
-	LatestImage         string                `json:"latestImage,omitempty"`
+	BuilderMetadata     MetadataOrder      `json:"builderMetadata,omitempty"`
+	Stack               BuildStack `json:"stack,omitempty"`
+	LatestImage         string     `json:"latestImage,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -142,7 +142,7 @@ func (b *Build) builtWithStack(runImage string) bool {
 	return lastBuildRunImageRef.Identifier() == builderRunImageRef.Identifier()
 }
 
-func (b *Build) builtWithBuildpacks(buildpacks BuildpackMetadataList) bool {
+func (b *Build) builtWithBuildpacks(buildpacks MetadataOrder) bool {
 	for _, bp := range b.Status.BuildMetadata {
 		if !buildpacks.Include(bp) {
 			return false

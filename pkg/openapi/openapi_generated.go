@@ -67,6 +67,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pivotal/kpack/pkg/apis/build/v1alpha1.ImageSpec":               schema_pkg_apis_build_v1alpha1_ImageSpec(ref),
 		"github.com/pivotal/kpack/pkg/apis/build/v1alpha1.ImageStatus":             schema_pkg_apis_build_v1alpha1_ImageStatus(ref),
 		"github.com/pivotal/kpack/pkg/apis/build/v1alpha1.LastBuild":               schema_pkg_apis_build_v1alpha1_LastBuild(ref),
+		"github.com/pivotal/kpack/pkg/apis/build/v1alpha1.MetadataOrderEntry":      schema_pkg_apis_build_v1alpha1_MetadataOrderEntry(ref),
 		"github.com/pivotal/kpack/pkg/apis/build/v1alpha1.NamespacedBuilderSpec":   schema_pkg_apis_build_v1alpha1_NamespacedBuilderSpec(ref),
 		"github.com/pivotal/kpack/pkg/apis/build/v1alpha1.OrderEntry":              schema_pkg_apis_build_v1alpha1_OrderEntry(ref),
 		"github.com/pivotal/kpack/pkg/apis/build/v1alpha1.Registry":                schema_pkg_apis_build_v1alpha1_Registry(ref),
@@ -669,7 +670,7 @@ func schema_pkg_apis_build_v1alpha1_BuilderStatus(ref common.ReferenceCallback) 
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("github.com/pivotal/kpack/pkg/apis/build/v1alpha1.BuildpackMetadata"),
+										Ref: ref("github.com/pivotal/kpack/pkg/apis/build/v1alpha1.MetadataOrderEntry"),
 									},
 								},
 							},
@@ -690,7 +691,7 @@ func schema_pkg_apis_build_v1alpha1_BuilderStatus(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"github.com/pivotal/kpack/pkg/apis/build/v1alpha1.BuildStack", "github.com/pivotal/kpack/pkg/apis/build/v1alpha1.BuildpackMetadata", "github.com/pivotal/kpack/pkg/apis/core/v1alpha1.Condition"},
+			"github.com/pivotal/kpack/pkg/apis/build/v1alpha1.BuildStack", "github.com/pivotal/kpack/pkg/apis/build/v1alpha1.MetadataOrderEntry", "github.com/pivotal/kpack/pkg/apis/core/v1alpha1.Condition"},
 	}
 }
 
@@ -743,10 +744,24 @@ func schema_pkg_apis_build_v1alpha1_BuildpackMetadata(ref common.ReferenceCallba
 							Format: "",
 						},
 					},
+					"order": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pivotal/kpack/pkg/apis/build/v1alpha1.MetadataOrderEntry"),
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"id", "version"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/pivotal/kpack/pkg/apis/build/v1alpha1.MetadataOrderEntry"},
 	}
 }
 
@@ -1788,6 +1803,37 @@ func schema_pkg_apis_build_v1alpha1_LastBuild(ref common.ReferenceCallback) comm
 	}
 }
 
+func schema_pkg_apis_build_v1alpha1_MetadataOrderEntry(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"group": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pivotal/kpack/pkg/apis/build/v1alpha1.BuildpackMetadata"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pivotal/kpack/pkg/apis/build/v1alpha1.BuildpackMetadata"},
+	}
+}
+
 func schema_pkg_apis_build_v1alpha1_NamespacedBuilderSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2455,7 +2501,7 @@ func schema_pkg_apis_core_v1alpha1_Condition(ref common.ReferenceCallback) commo
 					"lastTransitionTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LastTransitionTime is the last time the condition transitioned from one status to another. We use VolatileTime in place of metav1.Time to exclude this from creating equality.Semantic differences (all other things held constant).",
-							Type:        []string{"string"}, Format: "",
+							Type: []string{"string"}, Format: "",
 						},
 					},
 					"reason": {

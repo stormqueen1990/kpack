@@ -31,7 +31,7 @@ func (b *DuckBuilder) BuildBuilderSpec() v1alpha1.BuildBuilderSpec {
 	}
 }
 
-func (b *DuckBuilder) BuildpackMetadata() v1alpha1.BuildpackMetadataList {
+func (b *DuckBuilder) BuildpackMetadata() v1alpha1.MetadataOrder {
 	return b.Status.BuilderMetadata
 }
 

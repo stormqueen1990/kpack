@@ -51,7 +51,7 @@ func buildNeeded(im *v1alpha1.Image, lastBuild *v1alpha1.Build, sourceResolver *
 	return reasons, corev1.ConditionTrue
 }
 
-func builtWithBuildpacks(build *v1alpha1.Build, buildpacks v1alpha1.BuildpackMetadataList) bool {
+func builtWithBuildpacks(build *v1alpha1.Build, buildpacks v1alpha1.MetadataOrder) bool {
 	for _, bp := range build.Status.BuildMetadata {
 		if !buildpacks.Include(bp) {
 			return false

@@ -40,8 +40,11 @@ func (r *RemoteBuilderCreator) CreateBuilder(keychain authn.Keychain, buildpackR
 
 	builderBldr.AddStack(buildImage, clusterStack)
 
+	metadata := make(v1alpha1.MetadataOrder, 0)
+
 	for _, group := range spec.Order {
 		buildpacks := make([]RemoteBuildpackRef, 0, len(group.Group))
+		groupOrder := make(v1alpha1.BuildpackMetadataList, 0)
 
 		for _, buildpack := range group.Group {
 			remoteBuildpack, err := buildpackRepo.FindByIdAndVersion(buildpack.Id, buildpack.Version)
@@ -50,8 +53,11 @@ func (r *RemoteBuilderCreator) CreateBuilder(keychain authn.Keychain, buildpackR
 			}
 
 			buildpacks = append(buildpacks, remoteBuildpack.Optional(buildpack.Optional))
+
+			groupOrder = append(groupOrder, buildpackMetadata(remoteBuildpack))
 		}
 		builderBldr.AddGroup(buildpacks...)
+		metadata = append(metadata, v1alpha1.MetadataOrderEntry{Group: groupOrder})
 	}
 
 	writeableImage, err := builderBldr.WriteableImage()
@@ -70,18 +76,30 @@ func (r *RemoteBuilderCreator) CreateBuilder(keychain authn.Keychain, buildpackR
 			RunImage: clusterStack.Status.RunImage.LatestImage,
 			ID:       clusterStack.Status.Id,
 		},
-		Buildpacks: buildpackMetadata(builderBldr.buildpacks()),
+		Buildpacks: metadata,
 	}, nil
 }
 
-func buildpackMetadata(buildpacks []DescriptiveBuildpackInfo) v1alpha1.BuildpackMetadataList {
-	m := make(v1alpha1.BuildpackMetadataList, 0, len(buildpacks))
-	for _, b := range buildpacks {
-		m = append(m, v1alpha1.BuildpackMetadata{
-			Id:       b.Id,
-			Version:  b.Version,
-			Homepage: b.Homepage,
-		})
+func buildpackMetadata(buildpack RemoteBuildpackInfo) v1alpha1.BuildpackMetadata {
+	groupList := make(v1alpha1.MetadataOrder, 0)
+	for _, layer := range buildpack.Layers {
+		for _, group := range layer.BuildpackLayerInfo.Order {
+			currentGroup := make(v1alpha1.BuildpackMetadataList, 0)
+			for _, item := range group.Group {
+
+				currentGroup = append(currentGroup, v1alpha1.BuildpackMetadata{
+					Id:       item.Id,
+					Version:  item.Version,
+				})
+			}
+
+			groupList = append(groupList, v1alpha1.MetadataOrderEntry{Group: currentGroup})
+		}
 	}
-	return m
+	return v1alpha1.BuildpackMetadata{
+		Id:       buildpack.BuildpackInfo.Id,
+		Version:  buildpack.BuildpackInfo.Version,
+		Homepage: buildpack.BuildpackInfo.Homepage,
+		Order:    groupList,
+	}
 }

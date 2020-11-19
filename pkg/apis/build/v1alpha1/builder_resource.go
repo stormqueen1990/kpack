@@ -4,6 +4,6 @@ type BuilderResource interface {
 	GetName() string
 	BuildBuilderSpec() BuildBuilderSpec
 	Ready() bool
-	BuildpackMetadata() BuildpackMetadataList
+	BuildpackMetadata() MetadataOrder
 	RunImage() string
 }

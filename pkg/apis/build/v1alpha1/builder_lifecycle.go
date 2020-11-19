@@ -11,7 +11,7 @@ import (
 type BuilderRecord struct {
 	Image      string
 	Stack      BuildStack
-	Buildpacks BuildpackMetadataList
+	Buildpacks MetadataOrder
 }
 
 func (bs *BuilderStatus) BuilderRecord(record BuilderRecord) {
