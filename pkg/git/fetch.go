@@ -1,17 +1,18 @@
 package git
 
 import (
-	"log"
-	"os"
-	"path"
-
+	"fmt"
 	"github.com/BurntSushi/toml"
-
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/pkg/errors"
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
+	"path"
 )
 
 type Fetcher struct {
@@ -25,7 +26,12 @@ func (f Fetcher) Fetch(dir, gitURL, gitRevision, metadataDir string) error {
 		return err
 	}
 
-	repo, err := git.PlainInit(dir, false)
+	tmpDir, err := ioutil.TempDir("", "git-clone-")
+	if err != nil {
+		return err
+	}
+
+	repo, err := git.PlainInit(tmpDir, false)
 	if err != nil {
 		return errors.Wrap(err, "unable to init git repository")
 	}
@@ -66,10 +72,16 @@ func (f Fetcher) Fetch(dir, gitURL, gitRevision, metadataDir string) error {
 		return errors.Wrapf(err, "unable to checkout revision: %s", gitRevision)
 	}
 
+	err = CopyDir(tmpDir, dir)
+	if err != nil {
+		return fmt.Errorf("failed to move: %s: %s", dir, err.Error())
+	}
+
 	projectMetadataFile, err := os.Create(path.Join(metadataDir, "project-metadata.toml"))
 	if err != nil {
 		return errors.Wrapf(err, "invalid metadata destination '%s/project-metadata.toml' for git repository: %s", metadataDir, gitURL)
 	}
+	defer projectMetadataFile.Close()
 
 	projectMd := project{
 		Source: source{
@@ -108,4 +120,62 @@ type metadata struct {
 
 type version struct {
 	Commit string `toml:"commit"`
+}
+
+func CopyDir(src string, dst string) error {
+	var err error
+	var fds []os.FileInfo
+	var srcinfo os.FileInfo
+
+	if srcinfo, err = os.Stat(src); err != nil {
+		return err
+	}
+
+	if err = os.MkdirAll(dst, srcinfo.Mode()); err != nil {
+		return err
+	}
+
+	if fds, err = ioutil.ReadDir(src); err != nil {
+		return err
+	}
+	for _, fd := range fds {
+		srcfp := path.Join(src, fd.Name())
+		dstfp := path.Join(dst, fd.Name())
+
+		if fd.IsDir() {
+			if err = CopyDir(srcfp, dstfp); err != nil {
+				fmt.Println(err)
+			}
+		} else {
+			if err = CopyFile(srcfp, dstfp); err != nil {
+				fmt.Println(err)
+			}
+		}
+	}
+	return nil
+}
+
+func CopyFile(src, dst string) error {
+	var err error
+	var srcfd *os.File
+	var dstfd *os.File
+	var srcinfo os.FileInfo
+
+	if srcfd, err = os.Open(src); err != nil {
+		return err
+	}
+	defer srcfd.Close()
+
+	if dstfd, err = os.Create(dst); err != nil {
+		return err
+	}
+	defer dstfd.Close()
+
+	if _, err = io.Copy(dstfd, srcfd); err != nil {
+		return err
+	}
+	if srcinfo, err = os.Stat(src); err != nil {
+		return err
+	}
+	return os.Chmod(dst, srcinfo.Mode())
 }
