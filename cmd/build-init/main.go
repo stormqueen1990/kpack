@@ -2,11 +2,15 @@ package main
 
 import (
 	"flag"
+	"io"
 	"log"
+	"net"
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"time"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
@@ -29,6 +33,7 @@ var (
 	gitRevision   = flag.String("git-revision", os.Getenv("GIT_REVISION"), "The Git revision to make the repository HEAD.")
 	blobURL       = flag.String("blob-url", os.Getenv("BLOB_URL"), "The url of the source code blob.")
 	registryImage = flag.String("registry-image", os.Getenv("REGISTRY_IMAGE"), "The registry location of the source code image.")
+	hostName      = flag.String("dns-probe-hostname", os.Getenv("DNS_PROBE_HOSTNAME"), "hostname to dns poll")
 
 	buildChanges = flag.String("build-changes", os.Getenv("BUILD_CHANGES"), "JSON string of build changes and their reason")
 
@@ -58,6 +63,8 @@ const (
 )
 
 func main() {
+	prepareForWindows()
+
 	flag.Parse()
 
 	logger := log.New(os.Stdout, "", 0)
@@ -126,6 +133,28 @@ func main() {
 	}
 }
 
+func prepareForWindows() error {
+	if runtime.GOOS != "windows" {
+		return nil
+	}
+
+	err := waitForDns(*hostName)
+	if err != nil {
+		return err
+	}
+
+	path, err := os.Executable()
+	if err != nil {
+		return err
+	}
+
+	err = CopyFile(filepath.Join(filepath.Dir(path), "network-wait-launcher.exe"), filepath.Join("/kpack", "network-wait-launcher.exe"))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func fetchSource(logger *log.Logger, serviceAccountCreds dockercreds.DockerCreds) error {
 	switch {
 	case *gitURL != "":
@@ -174,4 +203,47 @@ func logLoadingSecrets(logger *log.Logger, secretsSlices ...[]string) {
 			}
 		}
 	}
+}
+
+func CopyFile(src, dst string) error {
+	var err error
+	var srcfd *os.File
+	var dstfd *os.File
+	var srcinfo os.FileInfo
+
+	if srcfd, err = os.Open(src); err != nil {
+		return err
+	}
+	defer srcfd.Close()
+
+	if dstfd, err = os.Create(dst); err != nil {
+		return err
+	}
+	defer dstfd.Close()
+
+	if _, err = io.Copy(dstfd, srcfd); err != nil {
+		return err
+	}
+	if srcinfo, err = os.Stat(src); err != nil {
+		return err
+	}
+	return os.Chmod(dst, srcinfo.Mode())
+}
+
+func waitForDns(hostname string) error {
+	timeoutChan := time.After(10 * time.Second)
+	tickerChan := time.NewTicker(time.Second)
+
+	for {
+		select {
+		case <-timeoutChan:
+			return errors.New("timeout waiting for network")
+		case <-tickerChan.C:
+			_, err := net.LookupIP(hostname)
+			if err == nil {
+				return nil
+			}
+		}
+	}
+
 }
