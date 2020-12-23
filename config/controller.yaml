@@ -12,6 +12,14 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name:  build-init-windows-image
+  namespace: kpack
+data:
+  image: #@ data.values.build_init_window_image
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name:  rebase-image
   namespace: kpack
 data:
@@ -32,6 +40,14 @@ metadata:
   namespace: kpack
 data:
   image: #@ data.values.completion_image
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name:  completion-windows-image
+  namespace: kpack
+data:
+  image: #@ data.values.completion_window_image
 ---
 apiVersion: apps/v1
 kind: Deployment

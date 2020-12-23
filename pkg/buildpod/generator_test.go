@@ -2,6 +2,7 @@ package buildpod_test
 
 import (
 	"fmt"
+	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"testing"
 
 	"github.com/buildpacks/lifecycle"
@@ -117,6 +118,14 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 
 			image := randomImage(t)
 			var err error
+
+			config, err := image.ConfigFile()
+			require.NoError(t, err)
+
+			config.OS = "linux"
+			image, err = mutate.ConfigFile(image, config)
+			require.NoError(t, err)
+
 			image, err = imagehelpers.SetStringLabel(image, lifecycle.StackIDLabel, "some.stack.id")
 			require.NoError(t, err)
 
@@ -182,6 +191,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 					Uid:         1234,
 					Gid:         5678,
 					PlatformAPI: "0.5",
+					OS:          "linux",
 				},
 			}}, build.buildPodCalls)
 		})

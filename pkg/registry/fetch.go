@@ -1,6 +1,8 @@
 package registry
 
 import (
+	"fmt"
+	"github.com/pivotal/kpack/pkg/filehelpers"
 	"io/ioutil"
 	"log"
 	"os"
@@ -48,6 +50,11 @@ func (f *Fetcher) Fetch(dir, registryImage string) error {
 		return err
 	}
 
+	tmpDir, err := ioutil.TempDir("", "registry-clone-")
+	if err != nil {
+		return err
+	}
+
 	var handler func(img v1.Image, dir string) error
 	switch cType {
 	case zip, jar, war:
@@ -60,8 +67,13 @@ func (f *Fetcher) Fetch(dir, registryImage string) error {
 		handler = handleSource
 	}
 
-	if err := handler(img, dir); err != nil {
+	if err := handler(img, tmpDir); err != nil {
 		return err
+	}
+
+	err = filehelpers.CopyDir(tmpDir, dir)
+	if err != nil {
+		return fmt.Errorf("failed to copy: %s: %s", dir, err.Error())
 	}
 
 	f.Logger.Printf("Successfully pulled %s in path %q", registryImage, dir)
