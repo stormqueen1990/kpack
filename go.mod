@@ -16,6 +16,7 @@ require (
 	github.com/google/go-cmp v0.5.1
 	github.com/google/go-containerregistry v0.1.1
 	github.com/gophercloud/gophercloud v0.4.0 // indirect
+	github.com/libgit2/git2go/v31 v31.4.12
 	github.com/matthewmcnew/archtest v0.0.0-20191014222827-a111193b50ad
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b
 	github.com/pkg/errors v0.9.1
@@ -25,7 +26,7 @@ require (
 	github.com/theupdateframework/notary v0.6.2-0.20200804143915-84287fd8df4f
 	github.com/vdemeester/k8s-pkg-credentialprovider v1.17.4
 	go.uber.org/zap v1.15.0
-	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
+	golang.org/x/crypto v0.0.0-20201203163018-be400aefbc4c
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
 	k8s.io/api v0.17.6
 	k8s.io/apimachinery v0.17.6

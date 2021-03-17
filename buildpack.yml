@@ -1,2 +1,5 @@
 go:
-  targets: ["./cmd/controller"]
+  targets: ["./cmd/build-init"]
+  build:
+    flags:
+    - -tags="static"

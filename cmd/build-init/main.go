@@ -102,15 +102,15 @@ func main() {
 		}
 	}
 
-	err = dockercreds.VerifyWriteAccess(creds, *imageTag)
-	if err != nil {
-		logger.Fatal(errors.Wrapf(err, "Error verifying write access to %q", *imageTag))
-	}
-
-	err = dockercreds.VerifyReadAccess(creds, *runImage)
-	if err != nil {
-		logger.Fatal(errors.Wrapf(err, "Error verifying read access to run image %q", *runImage))
-	}
+	//err = dockercreds.VerifyWriteAccess(creds, *imageTag)
+	//if err != nil {
+	//	logger.Fatal(errors.Wrapf(err, "Error verifying write access to %q", *imageTag))
+	//}
+	//
+	//err = dockercreds.VerifyReadAccess(creds, *runImage)
+	//if err != nil {
+	//	logger.Fatal(errors.Wrapf(err, "Error verifying read access to run image %q", *runImage))
+	//}
 
 	err = fetchSource(logger, creds)
 	if err != nil {

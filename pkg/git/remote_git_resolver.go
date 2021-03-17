@@ -1,11 +1,12 @@
 package git
 
 import (
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/go-git/go-git/v5/storage/memory"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
+
+	git2go "github.com/libgit2/git2go/v31"
 
 	"github.com/pivotal/kpack/pkg/apis/build/v1alpha1"
 )
@@ -15,35 +16,56 @@ const defaultRemote = "origin"
 type remoteGitResolver struct {
 }
 
-func (*remoteGitResolver) Resolve(auth transport.AuthMethod, sourceConfig v1alpha1.SourceConfig) (v1alpha1.ResolvedSourceConfig, error) {
-	repo := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
-		Name: defaultRemote,
-		URLs: []string{sourceConfig.Git.URL},
-	})
-	references, err := repo.List(&git.ListOptions{
-		Auth: auth,
+func (*remoteGitResolver) Resolve(keychain GitKeychain, sourceConfig v1alpha1.SourceConfig) (v1alpha1.ResolvedSourceConfig, error) {
+	dir, err := ioutil.TempDir("", "git-resolve")
+	if err != nil {
+		return v1alpha1.ResolvedSourceConfig{}, err
+	}
+	defer os.RemoveAll(dir)
+
+	repository, err := git2go.InitRepository(dir, false)
+	if err != nil {
+		return v1alpha1.ResolvedSourceConfig{}, err
+	}
+	defer repository.Free()
+
+	remote, err := repository.Remotes.CreateWithOptions(sourceConfig.Git.URL, &git2go.RemoteCreateOptions{
+		Name:  defaultRemote,
+		Flags: git2go.RemoteCreateSkipInsteadof,
 	})
 	if err != nil {
-		return v1alpha1.ResolvedSourceConfig{
-			Git: &v1alpha1.ResolvedGitSource{
-				URL:      sourceConfig.Git.URL,
-				Revision: sourceConfig.Git.Revision, // maybe
-				Type:     v1alpha1.Unknown,
-				SubPath:  sourceConfig.SubPath,
-			},
-		}, nil
+		return v1alpha1.ResolvedSourceConfig{}, err
+	}
+	defer remote.Free()
+
+	err = remote.ConnectFetch(&git2go.RemoteCallbacks{
+		CredentialsCallback: asCredentialCallback(keychain),
+		CertificateCheckCallback: func(cert *git2go.Certificate, valid bool, hostname string) git2go.ErrorCode {
+			return git2go.ErrorCodeOK
+
+		},
+	}, nil, nil)
+	if err != nil {
+		return v1alpha1.ResolvedSourceConfig{}, err
+	}
+
+	references, err := remote.Ls()
+	if err != nil {
+		return v1alpha1.ResolvedSourceConfig{}, err
 	}
 
 	for _, ref := range references {
-		if string(ref.Name().Short()) == sourceConfig.Git.Revision {
-			return v1alpha1.ResolvedSourceConfig{
-				Git: &v1alpha1.ResolvedGitSource{
-					URL:      sourceConfig.Git.URL,
-					Revision: ref.Hash().String(),
-					Type:     sourceType(ref),
-					SubPath:  sourceConfig.SubPath,
-				},
-			}, nil
+		for _, format := range refRevParseRules {
+			if fmt.Sprintf(format, sourceConfig.Git.Revision) == ref.Name {
+				return v1alpha1.ResolvedSourceConfig{
+					Git: &v1alpha1.ResolvedGitSource{
+						URL:      sourceConfig.Git.URL,
+						Revision: ref.Id.String(),
+						Type:     sourceType(ref),
+						SubPath:  sourceConfig.SubPath,
+					},
+				}, nil
+			}
 		}
 	}
 
@@ -57,13 +79,21 @@ func (*remoteGitResolver) Resolve(auth transport.AuthMethod, sourceConfig v1alph
 	}, nil
 }
 
-func sourceType(reference *plumbing.Reference) v1alpha1.GitSourceKind {
+func sourceType(reference git2go.RemoteHead) v1alpha1.GitSourceKind {
 	switch {
-	case reference.Name().IsBranch():
+	case strings.HasPrefix(reference.Name, "refs/heads"):
 		return v1alpha1.Branch
-	case reference.Name().IsTag():
+	case strings.HasPrefix(reference.Name, "refs/tags"):
 		return v1alpha1.Tag
 	default:
 		return v1alpha1.Unknown
 	}
+}
+
+var refRevParseRules = []string{
+	"refs/%s",
+	"refs/tags/%s",
+	"refs/heads/%s",
+	"refs/remotes/%s",
+	"refs/remotes/%s/HEAD",
 }

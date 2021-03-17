@@ -10,9 +10,8 @@ import (
 	"testing"
 
 	"github.com/BurntSushi/toml"
-
 	gogit "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/transport"
+	git2go "github.com/libgit2/git2go/v31"
 	"github.com/sclevine/spec"
 	"github.com/stretchr/testify/require"
 )
@@ -41,7 +40,8 @@ func testGitCheckout(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it.After(func() {
-			require.NoError(t, os.RemoveAll(testDir))
+			fmt.Println(testDir)
+			//require.NoError(t, os.RemoveAll(testDir))
 			require.NoError(t, os.RemoveAll(metadataDir))
 		})
 
@@ -59,7 +59,7 @@ func testGitCheckout(t *testing.T, when spec.G, it spec.S) {
 				status, err := worktree.Status()
 				require.NoError(t, err)
 
-				require.True(t, status.IsClean())
+				require.True(t, status.IsClean(), "should be clean")
 
 				require.Contains(t, outpuBuffer.String(), fmt.Sprintf("Successfully cloned \"%s\" @ \"%s\"", gitUrl, revision))
 
@@ -87,15 +87,20 @@ func testGitCheckout(t *testing.T, when spec.G, it spec.S) {
 
 		it("fetches a revision", testFetch("https://github.com/git-fixtures/basic", "b029517f6300c2da0f4b651b8642506cd6aaf45d"))
 
-		it("returns invalid credentials to fetch error on authentication required", func() {
-			err := fetcher.Fetch(testDir, "http://github.com/pivotal/kpack-nonexistent-test-repo", "master", "")
-			require.EqualError(t, err, "invalid credentials to fetch git repository: http://github.com/pivotal/kpack-nonexistent-test-repo")
+		it("returns error on non-existent ref", func() {
+			err := fetcher.Fetch(testDir, "https://github.com/git-fixtures/basic", "doesnotexist", "")
+			require.EqualError(t, err, "could not find reference: doesnotexist")
+		})
+
+		it("returns error from remote fetch when authentication required", func() {
+			err := fetcher.Fetch(testDir, "git@bitbucket.com:org/repo", "main", "")
+			require.EqualError(t, err, "error fetching remote: callback returned unsupported credentials type")
 		})
 	})
 }
 
 type fakeGitKeychain struct{}
 
-func (f fakeGitKeychain) Resolve(gitUrl string) (transport.AuthMethod, error) {
-	return nil, nil
+func (f fakeGitKeychain) Resolve(url string, username_from_url string, allowed_types git2go.CredentialType) (Git2GoCredential, error) {
+	return BasicGit2GoAuth{"thisisnotgonnawork", "AtAll"}, nil
 }
