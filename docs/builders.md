@@ -98,10 +98,6 @@ spec:
     - name: sample-cluster-buildpack
       kind: ClusterBuildpack
       id: paketo-buildpacks/nodejs
-    - name: sample-cluster-store
-      kind: ClusterStore
-      id: paketo-buildpacks/nodejs
-      version: 1.2.3
 ```
 
 * `serviceAccountRef`: An object reference to a service account in any namespace. The object reference must contain `name` and `namespace`.
